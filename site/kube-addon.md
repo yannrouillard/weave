@@ -58,6 +58,32 @@ Shut down Kubernetes, and _on all nodes_ perform the following:
 Then relaunch Kubernetes and install the addon as described
 above.
 
+**Note:** You can customise the generated YAML file by passing Weave Net's options, arguments and environment variables as query parameters:
+
+  - `version`: Weave Net's version. Default: latest release.
+  - `known-peers`: comma-separated list of hosts. Default: empty.
+  - `trusted-subnets`: comma-separated list of CIDRs. Default: empty.
+  - `disable-npc`: boolean (`true|false`). Default: `false`.
+  - `enable-encryption`: boolean (`true|false`). Default: `false`.
+  - `env.NAME=VALUE`: add environment variable `NAME` and set it to `VALUE`.
+
+Example:
+```
+$ kubectl apply -n kube-system -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')&env.MTU=1337"
+```
+This command -- notice `&env.MTU=1337` at the end of the URL -- generates a YAML file containing, among others:
+
+```
+[...]
+          containers:
+            - name: weave
+[...]
+              env:
+                - name: MTU
+                  value: '1337'
+[...]
+```
+
 **Note:** URLs:
 
 - [https://git.io/weave-kube](https://git.io/weave-kube), and
