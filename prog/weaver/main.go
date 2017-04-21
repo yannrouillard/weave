@@ -331,11 +331,7 @@ func main() {
 		dockerVersion = dockerCli.DockerVersion()
 	}
 
-	network := ""
-	if bridgeConfig.AWSVPC {
-		network = "awsvpc"
-	}
-	checkForUpdates(dockerVersion, network)
+	checkForUpdates(dockerVersion, func() map[string]string { return checkpointFlags(router) })
 
 	observeContainers := func(o docker.ContainerObserver) {
 		if dockerCli != nil {
@@ -472,6 +468,20 @@ func canonicalName(f *mflag.Flag) string {
 		}
 	}
 	return ""
+}
+
+func checkpointFlags(router *weave.NetworkRouter) map[string]string {
+	flags := map[string]string{}
+	status := weave.NewNetworkRouterStatus(router)
+	for _, conn := range status.Connections {
+		if connectionName, ok := conn.Attrs["name"].(string); ok {
+			if _, encrypted := conn.Attrs["encrypted"]; encrypted {
+				connectionName = connectionName + " encrypted"
+			}
+			flags[connectionName] = "network"
+		}
+	}
+	return flags
 }
 
 type packetLogging struct{}

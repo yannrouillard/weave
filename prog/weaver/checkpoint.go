@@ -16,7 +16,7 @@ const (
 	updateCheckPeriod = 6 * time.Hour
 )
 
-func checkForUpdates(dockerVersion string, network string) {
+func checkForUpdates(dockerVersion string, extraFlags func() map[string]string) {
 	newVersion.Store("")
 	success.Store(true)
 
@@ -51,9 +51,6 @@ func checkForUpdates(dockerVersion string, network string) {
 		"docker-version": dockerVersion,
 		"kernel-version": kernelVersion,
 	}
-	if network != "" {
-		flags["network"] = network
-	}
 
 	// Start background version checking
 	params := checkpoint.CheckParams{
@@ -61,6 +58,7 @@ func checkForUpdates(dockerVersion string, network string) {
 		Version:       version,
 		SignatureFile: "",
 		Flags:         flags,
+		ExtraFlags:    extraFlags,
 	}
 	checker = checkpoint.CheckInterval(&params, updateCheckPeriod, handleResponse)
 }
