@@ -246,10 +246,10 @@ func main() {
 
 	config.Password = determinePassword(password)
 
-	overlay, bridge := createOverlay(datapathName, ifaceName, isAWSVPC, config.Host, config.Port, bufSzMB, config.Password != nil)
-	networkConfig.Bridge = bridge
+	overlay, injectorConsumer := createOverlay(datapathName, ifaceName, isAWSVPC, config.Host, config.Port, bufSzMB, config.Password != nil)
+	networkConfig.InjectorConsumer = injectorConsumer
 
-	if bridge != nil {
+	if injectorConsumer != nil {
 		if err := weavenet.DetectHairpin("vethwe-bridge", Log); err != nil {
 			Log.Errorf("DetectHairpin failed: %s", err)
 		}
@@ -453,16 +453,16 @@ func (nopPacketLogging) LogPacket(string, weave.PacketKey) {
 func (nopPacketLogging) LogForwardPacket(string, weave.ForwardPacketKey) {
 }
 
-func createOverlay(datapathName string, ifaceName string, isAWSVPC bool, host string, port int, bufSzMB int, enableEncryption bool) (weave.NetworkOverlay, weave.Bridge) {
+func createOverlay(datapathName string, ifaceName string, isAWSVPC bool, host string, port int, bufSzMB int, enableEncryption bool) (weave.NetworkOverlay, weave.InjectorConsumer) {
 	overlay := weave.NewOverlaySwitch()
-	var bridge weave.Bridge
+	var bridge weave.InjectorConsumer
 	var ignoreSleeve bool
 
 	switch {
 	case isAWSVPC:
 		vpc := weave.NewAWSVPC()
 		overlay.Add("awsvpc", vpc)
-		bridge = weave.NullBridge{}
+		bridge = weave.NullInjectorConsumer{}
 		// Currently, we do not support any overlay with AWSVPC
 		ignoreSleeve = true
 	case datapathName != "" && ifaceName != "":
@@ -472,7 +472,7 @@ func createOverlay(datapathName string, ifaceName string, isAWSVPC bool, host st
 		checkFatal(err)
 		fastdp, err := weave.NewFastDatapath(iface, port, enableEncryption)
 		checkFatal(err)
-		bridge = fastdp.Bridge()
+		bridge = fastdp.InjectorConsumer()
 		overlay.Add("fastdp", fastdp.Overlay())
 	case ifaceName != "":
 		iface, err := weavenet.EnsureInterface(ifaceName)
@@ -480,7 +480,7 @@ func createOverlay(datapathName string, ifaceName string, isAWSVPC bool, host st
 		bridge, err = weave.NewPcap(iface, bufSzMB*1024*1024) // bufsz flag is in MB
 		checkFatal(err)
 	default:
-		bridge = weave.NullBridge{}
+		bridge = weave.NullInjectorConsumer{}
 	}
 
 	if !ignoreSleeve {
