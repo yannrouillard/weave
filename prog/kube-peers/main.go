@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"k8s.io/client-go/kubernetes"
 	api "k8s.io/client-go/pkg/api/v1"
@@ -36,12 +37,21 @@ func getKubePeers() ([]string, error) {
 	addresses := make([]string, 0, len(nodeList.Items))
 	for _, peer := range nodeList.Items {
 		for _, addr := range peer.Status.Addresses {
-			if addr.Type == "InternalIP" {
+			if addr.Type == "InternalIP" && addressLooksOK(addr.Address) {
 				addresses = append(addresses, addr.Address)
 			}
 		}
 	}
 	return addresses, nil
+}
+
+// There isn't much documentation for what can appear in the 'address' field, but we have seen
+// some installations with IPv6 addresses, which Weave Net cannot handle. So filter them out.
+func addressLooksOK(address string) bool {
+	if strings.Contains(address, ":") {
+		return false
+	}
+	return true
 }
 
 func main() {
