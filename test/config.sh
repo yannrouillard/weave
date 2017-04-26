@@ -1,6 +1,7 @@
 # NB only to be sourced
 
 set -e
+set -x
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -136,7 +137,7 @@ stop_weave_on() {
     host=$1
     weave_on $host stop 1>/dev/null 2>&1 || true
     if [ -n "$COVERAGE" ]; then
-        for C in weaveplugin weaveproxy weave ; do
+        for C in weaveplugin weave ; do
             collect_coverage $host $C
         done
     fi
