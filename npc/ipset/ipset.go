@@ -23,7 +23,7 @@ type Interface interface {
 	Flush(ipsetName Name) error
 	Destroy(ipsetName Name) error
 
-	List(prefix string) ([]Name, error)
+	List(prefix string, kind Type) ([]Name, error)
 
 	FlushAll() error
 	DestroyAll() error
@@ -75,18 +75,25 @@ func (i *ipset) DestroyAll() error {
 	return doExec("destroy")
 }
 
-// Fetch a list of all existing sets with a given prefix
-func (i *ipset) List(prefix string) ([]Name, error) {
-	output, err := exec.Command("ipset", "list", "-name", "-output", "plain").Output()
+// Fetch a list of all existing sets with a given prefix and optionally a given type
+func (i *ipset) List(prefix string, ipsetType Type) ([]Name, error) {
+	output, err := exec.Command("ipset", "list", "-output", "save").Output()
 	if err != nil {
 		return nil, err
 	}
 
 	var selected []Name
-	sets := strings.Split(string(output), "\n")
-	for _, v := range sets {
-		if strings.HasPrefix(v, prefix) {
-			selected = append(selected, Name(v))
+
+	const ( COMMAND = 0 SETNAME = 1 SETTYPE = 2 )
+	matchPrefixAndType := func(entryArgs []String) bool {
+		return strings.HasPrefix(entryArgs[SETNAME], prefix) && (!ipsetType || entryArgs[SETTYPE] == ipsetType)
+	}
+
+	entries := strings.Split(string(output), "\n")
+	for _, entry := range entries {
+		entryArgs := strings.Split(entry, ' ', 4)
+		if len(entryArgs) >= 3 && entryArgs[COMMAND] == "create" && matchPrefixAndType(entryArgs) {
+			selected = append(selected, Name(entryArgs[SETNAME]))
 		}
 	}
 

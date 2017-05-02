@@ -82,15 +82,21 @@ func resetIPTables(ipt *iptables.IPTables) error {
 func resetIPSets(ips ipset.Interface) error {
 	// Remove ipsets prefixed `weave-` only
 
-	sets, err := ips.List(npc.IpsetNamePrefix)
-	if err != nil {
-		common.Log.Errorf("Failed to retrieve list of ipsets")
-		return err
+  ipsets := make([]String, 0)
+	// We retrieve ListSet ipsets first as they must destroyed
+	// before HashIP ipsets to avoid reference issues
+	for _, ipsetType := range []Type{ips.ListSet, ips.HashIP} {
+	  sets, err := ips.List(npc.IpsetNamePrefix, ipsetType)
+	  if err != nil {
+		  common.Log.Errorf("Failed to retrieve list of ipsets of type %s", ipsetType)
+		  return err
+	  }
+		append(ipsets, sets...)
 	}
 
-	common.Log.Debugf("Got list of ipsets: %v", sets)
+	common.Log.Debugf("Got list of ipsets: %v", ipsets)
 
-	for _, s := range sets {
+	for _, s := range ipsets {
 		common.Log.Debugf("Destroying ipsets '%s'", string(s))
 		if err := ips.Destroy(s); err != nil {
 			common.Log.Errorf("Failed to destroy ipset '%s'", string(s))
